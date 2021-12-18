@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rat-Man</title>
+    <link rel="icon" href="Rat.png" />
+    <style>
+      canvas {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        margin: auto;
+        border: 10px solid rgba(63, 72, 204, 0.7);
+        border-radius: 20px;
+        box-shadow: 0 0 500px 100px #ffffff;
+      }
+      body {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        background-color: #ffffff;
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        -o-background-size: cover;
+        background-size: cover;
+        overflow: hidden;
+      }
+      button {
+        width: 100%;
+        height: 100%;
+        background-color: #000000;
+        color: #ffffff;
+        font-size: 60px;
+        opacity: 0;
+        z-index: 1000;
+        transition: 5s ease;
+        visibility: hidden;
+      }
+    </style>
+    <style>
+      html,
+      body,
+      div,
+      span,
+      applet,
+      object,
+      iframe,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      blockquote,
+      pre,
+      a,
+      abbr,
+      acronym,
+      address,
+      big,
+      cite,
+      code,
+      del,
+      dfn,
+      em,
+      img,
+      ins,
+      kbd,
+      q,
+      s,
+      samp,
+      small,
+      strike,
+      strong,
+      sub,
+      sup,
+      tt,
+      var,
+      b,
+      u,
+      i,
+      center,
+      dl,
+      dt,
+      dd,
+      ol,
+      ul,
+      li,
+      fieldset,
+      form,
+      label,
+      legend,
+      table,
+      caption,
+      tbody,
+      tfoot,
+      thead,
+      tr,
+      th,
+      td,
+      figure,
+      figcaption,
+      footer,
+      article,
+      aside,
+      canvas,
+      details,
+      embed,
+      header,
+      hgroup,
+      menu,
+      nav,
+      output,
+      ruby,
+      section,
+      summary,
+      time,
+      mark,
+      audio,
+      video {
+        margin: 0;
+        padding: 0;
+        font-size: 100%;
+        font: inherit;
+        vertical-align: baseline;
+      }
+
+      article,
+      aside,
+      details,
+      figcaption,
+      figure,
+      footer,
+      header,
+      hgroup,
+      menu,
+      nav,
+      section {
+        display: block;
+      }
+      body {
+        line-height: 0;
+      }
+      ol,
+      ul {
+        list-style: none;
+      }
+      blockquote,
+      q {
+        quotes: none;
+      }
+      blockquote:before,
+      blockquote:after,
+      q:before,
+      q:after {
+        content: "";
+        content: none;
+      }
+      table {
+        border-collapse: collapse;
+        border-spacing: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="main_canvas"></canvas>
+    <button id="blackout" onclick="APP.Reset()"></button>
+    <script>
+      (function () {
+        "use strict";
+        APP.Init();
+        APP.timer = setInterval(APP.Show_World, 1000 / APP.GAME_FPS);
+        window.addEventListener("keydown", APP.Keydown_Handler, false);
+        APP.Reset = function () {
+          APP.map.Init();
+          APP.player.Init();
+          APP.monsters.Init();
+          APP.blackout.style.transition = "0s";
+          APP.blackout.style.visibility = "hidden";
+          setTimeout(function () {
+            APP.timer = setInterval(APP.Show_World, 1000 / APP.GAME_FPS);
+            APP.blackout.style.opacity = 0;
+            APP.blackout.style.transition = "5s ease";
+          }, 100);
+        };
+      })();
+    </script>
+    <script>
+      APP.Show_World = function () {
+        var i,
+          dots = 0;
+        dots = APP.map.Draw();
+        if (!dots) {
+          APP.GAME_Over("You Win!");
+        }
+        for (i = 0; i < APP.MONSTERS_QUANTITY; i++) {
+          if (APP.monsters[i].x === APP.player.x) {
+            if (APP.monsters[i].y === APP.player.y) {
+              APP.GAME_Over("You Lose!");
+            }
+          }
+        }
+        APP.monsters.Move();
+        APP.player.Move();
+        APP.player.Check_For_Dots();
+        APP.portals.Show();
+        for (i = 0; i < APP.MONSTERS_QUANTITY; i++) {
+          APP.monsters[i].Show();
+        }
+      };
+      APP.map.Draw = function () {
+        var i,
+          j,
+          image,
+          x,
+          y,
+          dot_counter = 0;
+        for (i = 0; i < APP.MAP_WIDTH; i++) {
+          for (j = 0; j < APP.MAP_HEIGHT; j++) {
+            image = APP.images[APP.map.cells[j][i]];
+            x = i * APP.CELL_WIDTH;
+            y = j * APP.CELL_HEIGHT;
+            APP.context.drawImage(image, x, y);
+            if (APP.map.cells[j][i] === APP.DOT_CELL_DIGIT) {
+              dot_counter++;
+            }
+          }
+        }
+        return dot_counter;
+      };
+      APP.monsters.Move = function () {
+        var i;
+        for (i = 0; i < APP.MONSTERS_QUANTITY; i++) {
+          if (APP.monsters[i].frame === APP.monsters[i].speed) {
+            if (APP.monsters[i].direction !== APP.Direction.STOP) {
+              APP.monsters[i].previus_direction = APP.monsters[i].direction;
+            }
+            APP.monsters[i].Select_Direction();
+            APP.monsters[i].Check_Direction();
+            APP.monsters[i].Check_Wall();
+          }
+          if (APP.monsters[i].direction !== APP.Direction.STOP) {
+            if (APP.monsters[i].up) {
+              APP.monsters[i].Move_Up();
+            }
+            if (APP.monsters[i].down) {
+              APP.monsters[i].Move_Down();
+            }
+            if (APP.monsters[i].left) {
+              APP.monsters[i].Move_Left();
+            }
+            if (APP.monsters[i].right) {
+              APP.monsters[i].Move_Right();
+            }
+          }
+        }
+      };
+      APP.player.Move = function () {
+        if (APP.player.frame === APP.player.speed) {
+          APP.player.Check_Direction();
+          APP.player.Check_Wall();
+        }
+        if (APP.player.direction !== APP.Direction.STOP) {
+          if (APP.player.up) {
+            APP.player.Move_Up();
+          }
+          if (APP.player.down) {
+            APP.player.Move_Down();
+          }
+          if (APP.player.left) {
+            APP.player.Move_Left();
+          }
+          if (APP.player.right) {
+            APP.player.Move_Right();
+          }
+        }
+      };
+      APP.player.Check_For_Dots = function () {
+        if (APP.map.marks[APP.player.y][APP.player.x] === APP.DOT_MARK) {
+          APP.player.bonuses++;
+          APP.map.marks[APP.player.y][APP.player.x] = APP.BLANK_MARK;
+          APP.map.cells[APP.player.y][APP.player.x] = APP.BLANK_CELL_DIGIT;
+        }
+      };
+      APP.player.Show = function () {
+        var figure_offset = 5,
+          frame_number = 2 - Math.floor(this.frame / 3),
+          frame_offset = 1 - this.frame / this.speed,
+          image,
+          x,
+          y;
+        if (this.up) {
+          image = this.up_images[frame_number];
+          x = this.x * APP.CELL_WIDTH - figure_offset;
+          y = (this.y - frame_offset) * APP.CELL_HEIGHT - figure_offset;
+        } else if (this.down) {
+          image = this.down_images[frame_number];
+          x = this.x * APP.CELL_WIDTH - figure_offset;
+          y = (this.y + frame_offset) * APP.CELL_HEIGHT - figure_offset;
+        } else if (this.right) {
+          image = this.right_images[frame_number];
+          x = (this.x + frame_offset) * APP.CELL_WIDTH - figure_offset;
+        } else {
+          image = this.left_images[frame_number];
+          x = (this.x - frame_offset) * APP.CELL_WIDTH - figure_offset;
+          y = this.y * APP.CELL_HEIGHT - figure_offset;
+        }
+        APP.context.drawImage(image, x, y);
+      };
+      APP.Show_Monster = function () {
+        var figure_offset = 15,
+          frame_offset = 1 - this.frame / this.speed,
+          image,
+          x,
+          y;
+        if (this.up) {
+          image = this.up_images[0];
+          x = this.x * APP.CELL_WIDTH - figure_offset;
+          y = (this.y - frame_offset) * APP.CELL_HEIGHT - figure_offset;
+        } else if (this.down) {
+          image = this.down_images[0];
+          x = this.x * APP.CELL_WIDTH - figure_offset;
+          y = (this.y + frame_offset) * APP.CELL_HEIGHT - figure_offset;
+        } else if (this.right) {
+          image = this.right_images[0];
+          x = this.x * frame_offset * APP.CELL_WIDTH - figure_offset;
+          y = this.y + APP.CELL_HEIGHT - figure_offset;
+        } else {
+          image = this.left_images[0];
+          x = (this.x - frame_offset) * APP.CELL_WIDTH - figure_offset;
+          y = this.y * APP.CELL_HEIGHT - figure_offset;
+        }
+        APP.context.drawImage(image, x, y);
+      };
+    </script>
+  </body>
+</html>
